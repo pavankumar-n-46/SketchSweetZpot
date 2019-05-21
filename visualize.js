@@ -116,5 +116,4 @@ function Wave(x, y, barwid, maxhei, amount) {
 
     }
   }
-
 }
