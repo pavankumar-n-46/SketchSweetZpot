@@ -111,8 +111,8 @@ function Wave(x, y, barwid, maxhei, amount) {
       //Actual Draw
       strokeWeight(1);
       stroke(this.g, this.b, this.r);
-      //rect(this.x + this.i * this.barwid - this.amount * this.barwid / 2, this.y, this.barwid + 2, this.hei);
-      ellipse(this.x, this.y, iput, iput);
+      //rect(this.x + this.i * this.barwid - this.amount * this.barwid / 2, this.y, this.barwid + 2, iput);
+      ellipse(this.x, this.y, iput * this.barwid, 2 * iput);
 
     }
   }
