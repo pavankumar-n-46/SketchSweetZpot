@@ -112,7 +112,7 @@ function Wave(x, y, barwid, maxhei, amount) {
       strokeWeight(1);
       stroke(this.g, this.b, this.r);
       //rect(this.x + this.i * this.barwid - this.amount * this.barwid / 2, this.y, this.barwid + 2, iput);
-      ellipse(this.x, this.y, iput * this.barwid, 2 * iput);
+      ellipse(this.x, this.y, 2 * (iput * (this.barwid/2)), 2 * iput);
 
     }
   }
