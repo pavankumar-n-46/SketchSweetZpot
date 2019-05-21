@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="Sample illustrating the use of Web Bluetooth / Notifications.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="visualize.js" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@0.7.2/lib/p5.min.js" type="text/javascript"></script>
+    <title>Web Bluetooth / Notifications Sample</title>
+    <script>
+        // Add a global error event listener early on in the page load, to help ensure that browsers
+        // which don't support specific functionality still end up displaying a meaningful message.
+        window.addEventListener('error', function (error) {
+            if (ChromeSamples && ChromeSamples.setStatus) {
+                console.error(error);
+                ChromeSamples.setStatus(error.message + ' (Your browser may not support this feature.)');
+                error.preventDefault();
+            }
+        });
+    </script>
+
+    <link rel="icon" href="icon.png">
+
+    <link rel="stylesheet" href="../styles/main.css">
+
+
+</head>
+
+<body>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js');
+        }
+    </script>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', function () {
+            const searchParams = new URL(location).searchParams;
+            const inputs = Array.from(document.querySelectorAll('input[id]'));
+
+            inputs.forEach(input => {
+                if (searchParams.has(input.id)) {
+                    if (input.type == 'checkbox') {
+                        input.checked = searchParams.get(input.id);
+                    } else {
+                        input.value = searchParams.get(input.id);
+                        input.blur();
+                    }
+                }
+                if (input.type == 'checkbox') {
+                    input.addEventListener('change', function (event) {
+                        const newSearchParams = new URL(location).searchParams;
+                        if (event.target.checked) {
+                            newSearchParams.set(input.id, event.target.checked);
+                        } else {
+                            newSearchParams.delete(input.id);
+                        }
+                        history.replaceState({}, '', Array.from(newSearchParams).length ?
+                            location.pathname + '?' + newSearchParams : location.pathname);
+                    });
+                } else {
+                    input.addEventListener('input', function (event) {
+                        const newSearchParams = new URL(location).searchParams;
+                        if (event.target.value) {
+                            newSearchParams.set(input.id, event.target.value);
+                        } else {
+                            newSearchParams.delete(input.id);
+                        }
+                        history.replaceState({}, '', Array.from(newSearchParams).length ?
+                            location.pathname + '?' + newSearchParams : location.pathname);
+                    });
+                }
+            });
+        });
+    </script>
+
+
+    <form>
+        <button id="startNotifications">Start notifications</button>
+        <button id="stopNotifications">Stop notifications</button>
+    </form>
+
+
+    <script>
+        var ChromeSamples = {
+            log: function () {
+                var line = Array.prototype.slice.call(arguments).map(function (argument) {
+                    return typeof argument === 'string' ? argument : JSON.stringify(argument);
+                }).join(' ');
+
+                document.querySelector('#log').textContent += line + '\n';
+            },
+
+            clearLog: function () {
+                document.querySelector('#log').textContent = '';
+            },
+
+            setStatus: function (status) {
+                document.querySelector('#status').textContent = status;
+            },
+
+            setContent: function (newContent) {
+                var content = document.querySelector('#content');
+                while (content.hasChildNodes()) {
+                    content.removeChild(content.lastChild);
+                }
+                content.appendChild(newContent);
+            }
+        };
+    </script>
+
+    <h3>Live Output</h3>
+    <div id="output" class="output">
+        <div id="content"></div>
+        <div id="status"></div>
+        <pre id="log"></pre>
+    </div>
+
+
+    <script>
+        if (/Chrome\/(\d+\.\d+.\d+.\d+)/.test(navigator.userAgent)) {
+            // Let's log a warning if the sample is not supposed to execute on this
+            // version of Chrome.
+            if (48 > parseInt(RegExp.$1)) {
+                ChromeSamples.setStatus('Warning! Keep in mind this sample has been tested with Chrome ' + 48 + '.');
+            }
+        }
+    </script>
+
+   <!--
+
+    <script>
+        var myCharacteristic;
+
+        function onStartButtonClick() {
+            let serviceUuid = '0xffb0';
+            if (serviceUuid.startsWith('0x')) {
+                serviceUuid = parseInt(serviceUuid);
+            }
+
+            let characteristicUuid = '0xffb3';
+            if (characteristicUuid.startsWith('0x')) {
+                characteristicUuid = parseInt(characteristicUuid);
+            }
+
+            log('Requesting Bluetooth Device...');
+            navigator.bluetooth.requestDevice({ filters: [{ services: [serviceUuid] }] })
+                .then(device => {
+                    log('Connecting to GATT Server...');
+                    return device.gatt.connect();
+                })
+                .then(server => {
+                    log('Getting Service...');
+                    return server.getPrimaryService(serviceUuid);
+                })
+                .then(service => {
+                    log('Getting Characteristic...');
+                    return service.getCharacteristic(characteristicUuid);
+                })
+                .then(characteristic => {
+                    myCharacteristic = characteristic;
+                    return myCharacteristic.startNotifications().then(_ => {
+                        log('> Notifications started');
+                        myCharacteristic.addEventListener('characteristicvaluechanged',
+                            handleNotifications);
+                    });
+                })
+                .catch(error => {
+                    log('Argh! ' + error);
+                });
+        }
+
+        function onStopButtonClick() {
+            if (myCharacteristic) {
+                myCharacteristic.stopNotifications()
+                    .then(_ => {
+                        log('> Notifications stopped');
+                        myCharacteristic.removeEventListener('characteristicvaluechanged',
+                            handleNotifications);
+                    })
+                    .catch(error => {
+                        log('Argh! ' + error);
+                    });
+            }
+        }
+
+        function handleNotifications(event) {
+            let value = event.target.value;
+            let a = [];
+            // Convert raw data bytes to hex values just for the sake of showing something.
+            // In the "real" world, you'd use data.getUint8, data.getUint16 or even
+            // TextDecoder to process raw data bytes.
+            for (let i = 0; i < 1; i++) {
+                a.push(value.getUint8(i).toString());
+            }
+            log('> ' + a.join(' '));
+        }
+
+        var w;
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            w1 = new Wave(width / 2, height / 2, 1, 200, width);
+        }
+
+        function draw() {
+            background(0, 0, 0, 10);
+            w1.barwid = map(mouseX, 0, width, 5, 1);
+            w1.maxhei = map(mouseY, 0, height, height, 1);
+            w1.display();
+        }
+        //Wave Object
+        function Wave(x, y, barwid, maxhei, amount) {
+            //Initial Variables
+            //Coords
+            this.x = x;
+            this.y = y;
+            //Bar Properties
+            this.maxhei = maxhei;
+            this.amount = amount;
+            this.barwid = barwid;
+            //noStroke();
+            rectMode(CENTER);
+            //Display
+            this.display = function () {
+                for (this.i = 0; this.i < this.amount; this.i++) {
+                    //Time in milliseconds/600 for smoothe transitions
+                    this.time = millis() / 600;
+                    //Cycling colors depending on time
+                    this.r = map(sin(this.time + this.i / 90), -1, 1, 0, 255);
+                    this.g = map(sin(this.time + 22.5 + this.i / 90), -1, 1, 0, 255);
+                    this.b = map(sin(this.time + 45 + this.i / 90), -1, 1, 0, 255);
+                    fill(this.r, this.g, this.b);
+                    //Hight depending on time and i
+                    this.hei = map(sin(this.i / 90 + this.time), -1, 1, 0, this.maxhei);
+                    //Actual Draw
+                    strokeWeight(1);
+                    stroke(this.g, this.b, this.r);
+                    rect(this.x + this.i * this.barwid - this.amount * this.barwid / 2, this.y, this.barwid + 2, this.hei);
+
+                }
+            }
+
+        }
+    </script>
+    -->
+    
+
+
+    <script>
+        document.querySelector('#startNotifications').addEventListener('click', function (event) {
+            event.stopPropagation();
+            event.preventDefault();
+
+            if (isWebBluetoothEnabled()) {
+                ChromeSamples.clearLog();
+                onStartButtonClick();
+            }
+        });
+        document.querySelector('#stopNotifications').addEventListener('click', function (event) {
+            event.stopPropagation();
+            event.preventDefault();
+
+            if (isWebBluetoothEnabled()) {
+                onStopButtonClick();
+            }
+        });
+    </script>
+
+    <script>
+        log = ChromeSamples.log;
+
+        function isWebBluetoothEnabled() {
+            if (navigator.bluetooth) {
+                return true;
+            } else {
+                ChromeSamples.setStatus('Web Bluetooth API is not available.\n' +
+                    'Please make sure the "Experimental Web Platform features" flag is enabled.');
+                return false;
+            }
+        }
+    </script>
+
+<!--     <script>
+        /* jshint ignore:start */
+        (function (i, s, o, g, r, a, m) {
+            i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+                (i[r].q = i[r].q || []).push(arguments)
+            }, i[r].l = 1 * new Date(); a = s.createElement(o),
+                m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+        })(window, document, 'script', 'https://www.google-analytics.com/analytics.js', 'ga');
+        ga('create', 'UA-53563471-1', 'auto');
+        ga('send', 'pageview');
+      /* jshint ignore:end */
+    </script> -->
+</body>
+
+</html>
